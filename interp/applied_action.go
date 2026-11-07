@@ -22,6 +22,14 @@ type ActionFileInto struct {
 	Mailbox string
 	Flags   Flags
 	Copy    bool
+	// Create asks for Mailbox to be created if it doesn't exist (:create,
+	// RFC 5490).
+	Create bool
+	// SpecialUse, if set, asks for delivery into the mailbox with this
+	// special-use attribute, falling back to Mailbox if there is none
+	// (:specialuse, RFC 8579). With Create, a created Mailbox should get the
+	// attribute.
+	SpecialUse string
 }
 
 func (ActionFileInto) testActionName() string            { return "fileinto" }

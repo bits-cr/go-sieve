@@ -61,6 +61,7 @@ func loadFileInto(s *Script, pcmd parser.Cmd) (Cmd, error) {
 		return nil, parser.ErrorAt(pcmd.Position, "missing require 'fileinto")
 	}
 	cmd := CmdFileInto{}
+	specialUseSet := false
 	err := LoadSpec(s, &Spec{
 		Tags: map[string]SpecTag{
 			"flags": {
@@ -74,6 +75,20 @@ func loadFileInto(s *Script, pcmd parser.Cmd) (Cmd, error) {
 				NeedsValue: false,
 				MatchBool: func() {
 					cmd.Copy = true
+				},
+			},
+			"create": {
+				MatchBool: func() {
+					cmd.Create = true
+				},
+			},
+			"specialuse": {
+				NeedsValue:  true,
+				MinStrCount: 1,
+				MaxStrCount: 1,
+				MatchStr: func(val []string) {
+					cmd.SpecialUse = val[0]
+					specialUseSet = true
 				},
 			},
 		},
@@ -96,6 +111,17 @@ func loadFileInto(s *Script, pcmd parser.Cmd) (Cmd, error) {
 	}
 	if cmd.Copy && !s.RequiresExtension("copy") {
 		return nil, parser.ErrorAt(pcmd.Position, "missing require 'copy'")
+	}
+	if cmd.Create && !s.RequiresExtension("mailbox") {
+		return nil, parser.ErrorAt(pcmd.Position, "missing require 'mailbox'")
+	}
+	if specialUseSet {
+		if !s.RequiresExtension("special-use") {
+			return nil, parser.ErrorAt(pcmd.Position, "missing require 'special-use'")
+		}
+		if len(usedVars(s, cmd.SpecialUse)) == 0 && !validSpecialUseFlag(cmd.SpecialUse) {
+			return nil, parser.ErrorAt(pcmd.Position, "invalid special-use flag: %q", cmd.SpecialUse)
+		}
 	}
 
 	return cmd, nil

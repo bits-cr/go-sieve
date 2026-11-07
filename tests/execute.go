@@ -30,6 +30,18 @@ func RunExecuteTests(t *testing.T, env interp.ExecuteTestEnvironment) {
 			ExecuteTestRuntime(env),
 		)
 	})
+	t.Run("extensions/mailbox", func(t *testing.T) {
+		RunDovecotTest(t,
+			filepath.Join("pigeonhole", "tests", "extensions", "mailbox", "execute.svtest"),
+			ExecuteTestRuntime(env),
+		)
+	})
+	t.Run("extensions/special-use", func(t *testing.T) {
+		RunDovecotTest(t,
+			filepath.Join("pigeonhole", "tests", "extensions", "special-use", "execute.svtest"),
+			ExecuteTestRuntime(env),
+		)
+	})
 	t.Run("extensions/reject", func(t *testing.T) {
 		RunDovecotTest(t,
 			filepath.Join("pigeonhole", "tests", "extensions", "reject", "execute.svtest"),
