@@ -353,8 +353,14 @@ func (t TestDovecotCompile) Check(_ context.Context, d *RuntimeData) (bool, erro
 		return false, nil
 	}
 
+	// The compiled script is a regular Sieve script: it gets the limits of
+	// the running test script, but not the testsuite extension (T).
 	script, err := LoadScript(cmds, &Options{
-		MaxRedirects: d.Script.opts.MaxRedirects,
+		MaxRedirects:       d.Script.opts.MaxRedirects,
+		MaxVariableCount:   d.Script.opts.MaxVariableCount,
+		MaxVariableNameLen: d.Script.opts.MaxVariableNameLen,
+		MaxVariableLen:     d.Script.opts.MaxVariableLen,
+		SubAddressSep:      d.Script.opts.SubAddressSep,
 	})
 	if err != nil {
 		d.Script.opts.T.Log("LoadScript failed:", err)
