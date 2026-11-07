@@ -57,10 +57,17 @@ func loadAddressTest(s *Script, test parser.Test) (Test, error) {
 			},
 		}
 	}
+	var index indexArgs
+	addIndexTags(s, spec, &index)
 	err := LoadSpec(s, spec, test.Position, test.Args, test.Tests, nil)
 	if err != nil {
 		return nil, err
 	}
+	if err := index.validate(); err != nil {
+		return nil, err
+	}
+	loaded.Index = index.index
+	loaded.Last = index.last
 
 	if err := loaded.setKey(s, key); err != nil {
 		return nil, err
@@ -188,7 +195,8 @@ func loadTrueTest(s *Script, test parser.Test) (Test, error) {
 func loadHeaderTest(s *Script, test parser.Test) (Test, error) {
 	loaded := HeaderTest{MatcherTest: newMatcherTest()}
 	var key []string
-	err := LoadSpec(s, loaded.addSpecTags(&Spec{
+	var index indexArgs
+	spec := loaded.addSpecTags(&Spec{
 		Pos: []SpecPosArg{
 			{
 				MatchStr: func(val []string) {
@@ -203,10 +211,17 @@ func loadHeaderTest(s *Script, test parser.Test) (Test, error) {
 				MinStrCount: 1,
 			},
 		},
-	}), test.Position, test.Args, test.Tests, nil)
+	})
+	addIndexTags(s, spec, &index)
+	err := LoadSpec(s, spec, test.Position, test.Args, test.Tests, nil)
 	if err != nil {
 		return nil, err
 	}
+	if err := index.validate(); err != nil {
+		return nil, err
+	}
+	loaded.Index = index.index
+	loaded.Last = index.last
 
 	if err := loaded.setKey(s, key); err != nil {
 		return nil, err

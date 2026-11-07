@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"strings"
+	"time"
 
 	"github.com/foxcpp/go-sieve/lexer"
 )
@@ -198,6 +199,19 @@ type RuntimeData struct {
 	MatchVariables []string
 	Variables      map[string]string
 
+	// Now returns the current time for the currentdate test (RFC 5260). It is
+	// called at most once per script execution, so every currentdate test
+	// sees the same instant. Defaults to time.Now; a delivery agent can pass
+	// the time the message was received instead.
+	Now func() time.Time
+	// Location is the local time zone of the date and currentdate tests,
+	// used when neither :zone nor :originalzone is given. Defaults to
+	// time.Local.
+	Location *time.Location
+
+	// The instant all currentdate tests of this execution refer to.
+	now time.Time
+
 	// vnd.dovecot.testsuite state, not intended for production use
 	Test *TestRuntime
 }
@@ -219,6 +233,9 @@ func (d *RuntimeData) Copy() *RuntimeData {
 		FlagAliases:    make(map[string]string, len(d.FlagAliases)),
 		MatchVariables: make([]string, len(d.MatchVariables)),
 		Variables:      make(map[string]string, len(d.Variables)),
+		Now:            d.Now,
+		Location:       d.Location,
+		now:            d.now,
 		Test:           d.Test,
 	}
 
@@ -239,6 +256,27 @@ func (d *RuntimeData) Copy() *RuntimeData {
 	}
 
 	return newData
+}
+
+// currentTime returns the instant of the currentdate test, the same for the
+// whole execution.
+func (d *RuntimeData) currentTime() time.Time {
+	if d.now.IsZero() {
+		if d.Now != nil {
+			d.now = d.Now()
+		} else {
+			d.now = time.Now()
+		}
+	}
+	return d.now
+}
+
+// location returns the local time zone of the date tests.
+func (d *RuntimeData) location() *time.Location {
+	if d.Location != nil {
+		return d.Location
+	}
+	return time.Local
 }
 
 func (d *RuntimeData) MatchVariable(i int) string {
