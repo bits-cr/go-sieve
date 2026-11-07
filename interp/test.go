@@ -18,6 +18,11 @@ type AddressTest struct {
 
 	AddressPart AddressPart
 	Header      []string
+
+	// Index and Last are the index extension's :index and :last (RFC 5260,
+	// section 6). Index 0 means all fields.
+	Index int
+	Last  bool
 }
 
 var allowedAddrHeaders = map[string]struct{}{
@@ -59,7 +64,9 @@ var allowedAddrHeaders = map[string]struct{}{
 }
 
 func (a AddressTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
-	entryCount := uint64(0)
+	// All named fields, counted in the order of the header list (RFC 5260,
+	// section 6), so that :index can select one of them.
+	var fields []string
 	for _, hdr := range a.Header {
 		hdr = strings.ToLower(hdr)
 		hdr = expandVars(d, hdr)
@@ -72,26 +79,29 @@ func (a AddressTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		fields = append(fields, values...)
+	}
+	fields = selectIndexed(fields, a.Index, a.Last)
 
-		for _, value := range values {
-			addrList, err := mail.ParseAddressList(value)
-			if err != nil {
-				return false, nil
+	entryCount := uint64(0)
+	for _, value := range fields {
+		addrList, err := mail.ParseAddressList(value)
+		if err != nil {
+			return false, nil
+		}
+
+		for _, addr := range addrList {
+			if a.isCount() {
+				entryCount++
+				continue
 			}
 
-			for _, addr := range addrList {
-				if a.isCount() {
-					entryCount++
-					continue
-				}
-
-				ok, err := testAddress(d, a.MatcherTest, a.AddressPart, addr.Address)
-				if err != nil {
-					return false, err
-				}
-				if ok {
-					return true, nil
-				}
+			ok, err := testAddress(d, a.MatcherTest, a.AddressPart, addr.Address)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				return true, nil
 			}
 		}
 	}
@@ -212,29 +222,39 @@ type HeaderTest struct {
 	MatcherTest
 
 	Header []string
+
+	// Index and Last are the index extension's :index and :last (RFC 5260,
+	// section 6). Index 0 means all fields.
+	Index int
+	Last  bool
 }
 
 func (h HeaderTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
-	entryCount := uint64(0)
+	// All named fields, counted in the order of the header list (RFC 5260,
+	// section 6), so that :index can select one of them.
+	var fields []string
 	for _, hdr := range h.Header {
 		values, err := d.Msg.HeaderGet(expandVars(d, hdr))
 		if err != nil {
 			return false, err
 		}
+		fields = append(fields, values...)
+	}
+	fields = selectIndexed(fields, h.Index, h.Last)
 
-		for _, value := range values {
-			if h.isCount() {
-				entryCount++
-				continue
-			}
+	entryCount := uint64(0)
+	for _, value := range fields {
+		if h.isCount() {
+			entryCount++
+			continue
+		}
 
-			ok, err := h.MatcherTest.tryMatch(d, value)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				return true, nil
-			}
+		ok, err := h.MatcherTest.tryMatch(d, value)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
 		}
 	}
 
