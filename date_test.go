@@ -39,6 +39,24 @@ if date :value "lt" :originalzone "date" "date" "1997-04-02" { fileinto "matched
 	}
 }
 
+func TestDateJulianFarDates(t *testing.T) {
+	// The Modified Julian Day is exact for dates time.Duration can't span.
+	for _, tc := range []struct {
+		date string
+		mjd  string
+	}{
+		{"Wed, 17 Nov 1858 00:00:00 +0000", "0"},
+		{"Tue, 16 Nov 1858 00:00:00 +0000", "-1"},
+		{"Wed, 1 Jan 2200 00:00:00 +0000", "124593"},
+		{"Fri, 31 Dec 9999 23:59:59 +0000", "2973483"},
+	} {
+		msg := "Date: " + tc.date + "\nSubject: x\n\nBody.\n"
+		testExecute(t, `require ["date", "fileinto"];
+if date :originalzone "date" "julian" "`+tc.mjd+`" { fileinto "matched"; }
+`, msg, []interp.AppliedAction{interp.ActionFileInto{Mailbox: "matched"}})
+	}
+}
+
 func TestDateLoadErrors(t *testing.T) {
 	for name, script := range map[string]string{
 		"missing require":          `if date "date" "year" "1997" { keep; }`,
