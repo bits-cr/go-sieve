@@ -38,14 +38,17 @@ func (s *simpleExecuteRuntime) GetDefaultMailbox() string {
 }
 
 func (s *simpleExecuteRuntime) ExecuteActions(d *interp.RuntimeData, actions []interp.AppliedAction) error {
+	if s.mailboxes == nil {
+		s.mailboxes = make(map[string][]*interp.ExecuteTestMessage)
+	}
+	// As in Pigeonhole, test_message :smtp <n> refers to the messages sent by
+	// the latest execution; the mail store persists.
+	s.smtp = nil
 	for _, act := range actions {
 		switch act := act.(type) {
 		case interp.ActionFileInto:
 			// No mailbox has a special-use attribute here, so :specialuse
 			// falls back to the named mailbox (RFC 8579, section 5).
-			if s.mailboxes == nil {
-				s.mailboxes = make(map[string][]*interp.ExecuteTestMessage)
-			}
 			s.mailboxes[act.Mailbox] = append(s.mailboxes[act.Mailbox], &interp.ExecuteTestMessage{
 				Envelope: d.Envelope,
 				Message:  d.Msg,

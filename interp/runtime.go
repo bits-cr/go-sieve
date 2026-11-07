@@ -182,6 +182,11 @@ type TestRuntime struct {
 	OriginalEnvelope Envelope
 	OriginalMsg      Message
 	OriginalFlags    Flags
+
+	// Config holds test_config_set values that only the test execution
+	// environment interprets (for example "sieve_user_email" and the
+	// "sieve_vacation_*" settings).
+	Config map[string]string
 }
 
 type RuntimeData struct {
