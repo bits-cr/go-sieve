@@ -63,7 +63,7 @@ if envelope :is "from" "test@example.org" {
 `, []Cmd{
 		CmdIf{
 			Test: EnvelopeTest{
-				matcherTest: matcherTest{
+				MatcherTest: MatcherTest{
 					Comparator: ComparatorASCIICaseMap,
 					Match:      MatchIs,
 					Key:        []string{"test@example.org"},

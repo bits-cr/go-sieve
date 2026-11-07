@@ -184,7 +184,7 @@ func splitSubAddress(localPart, sep string) (user, detail string, hasDetail bool
 	return localPart[:idx], localPart[idx+1:], true
 }
 
-func testAddress(d *RuntimeData, matcher matcherTest, part AddressPart, address string) (bool, error) {
+func testAddress(d *RuntimeData, matcher MatcherTest, part AddressPart, address string) (bool, error) {
 	if address == "<>" {
 		address = ""
 	}

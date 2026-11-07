@@ -83,15 +83,84 @@ type CmdSet struct {
 	Name  string
 	Value string
 
+	// Modifiers are the value modifiers (RFC 5229, section 4.1) in the order
+	// they apply: "upper"/"lower", "upperfirst"/"lowerfirst",
+	// "quotewildcard", "length". Unlike ModifyValue they survive Script.Save.
+	Modifiers []string
+
+	// ModifyValue, if set, replaces Modifiers. It is kept for API
+	// compatibility; encoding/gob cannot save a function, so the loader no
+	// longer sets it.
 	ModifyValue func(string) string
 }
 
 func (c CmdSet) Execute(_ context.Context, d *RuntimeData) error {
-	return d.SetVar(c.Name, c.ModifyValue(expandVars(d, c.Value)))
+	value := expandVars(d, c.Value)
+	if c.ModifyValue != nil {
+		value = c.ModifyValue(value)
+	} else {
+		value = applySetModifiers(c.Modifiers, value, d.Script.opts.MaxVariableLen)
+	}
+	return d.SetVar(c.Name, value)
+}
+
+func applySetModifiers(modifiers []string, s string, maxVariableLen int) string {
+	for _, m := range modifiers {
+		switch m {
+		case "upper":
+			s = strings.ToUpper(s)
+		case "lower":
+			s = strings.ToLower(s)
+		case "upperfirst":
+			if len(s) != 0 && s[0] >= 'a' && s[0] <= 'z' {
+				s = string(s[0]-('a'-'A')) + s[1:]
+			}
+		case "lowerfirst":
+			if len(s) != 0 && s[0] >= 'A' && s[0] <= 'Z' {
+				s = string(s[0]+('a'-'A')) + s[1:]
+			}
+		case "quotewildcard":
+			escaped := strings.Builder{}
+			escaped.Grow(len(s))
+			for _, chr := range s {
+				switch chr {
+				case '\\', '*', '?':
+					escaped.WriteByte('\\')
+				}
+				escaped.WriteRune(chr)
+			}
+			s = escaped.String()
+		case "length":
+			// RFC mentions `characters' and not octets
+			s = strconv.Itoa(len([]rune(s)))
+		}
+	}
+
+	// If the last modifier was quotewildcard, check whether the value would
+	// remain valid if truncated to MaxVariableLen. If not, truncate here and
+	// drop a dangling backslash.
+	if len(modifiers) != 0 && modifiers[len(modifiers)-1] == "quotewildcard" && len(s) > maxVariableLen {
+		until := maxVariableLen
+
+		// (Copy-pasted from RuntimeData.SetVar)
+		// If this truncated an otherwise valid Unicode character,
+		// remove the character altogether.
+		for until > 0 && s[until] >= 128 && s[until] < 192 /* second or further octet of UTF-8 encoding */ {
+			until--
+		}
+
+		if until > 0 && s[until-1] == '\\' {
+			until--
+		}
+
+		s = s[:until]
+	}
+
+	return s
 }
 
 type TestString struct {
-	matcherTest
+	MatcherTest
 
 	Source []string
 }
@@ -108,7 +177,7 @@ func (t TestString) Check(_ context.Context, d *RuntimeData) (bool, error) {
 			continue
 		}
 
-		ok, err := t.matcherTest.tryMatch(d, source)
+		ok, err := t.MatcherTest.tryMatch(d, source)
 		if err != nil {
 			return false, err
 		}
@@ -125,5 +194,6 @@ func (t TestString) Check(_ context.Context, d *RuntimeData) (bool, error) {
 }
 
 func init() {
+	gob.Register(CmdSet{})
 	gob.Register(TestString{})
 }

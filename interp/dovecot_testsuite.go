@@ -394,7 +394,7 @@ func (t TestDovecotRun) Check(ctx context.Context, d *RuntimeData) (bool, error)
 }
 
 type TestDovecotTestError struct {
-	matcherTest
+	MatcherTest
 }
 
 func (t TestDovecotTestError) Check(_ context.Context, _ *RuntimeData) (bool, error) {
@@ -405,7 +405,7 @@ func (t TestDovecotTestError) Check(_ context.Context, _ *RuntimeData) (bool, er
 }
 
 type TestDovecotResultAction struct {
-	matcherTest
+	MatcherTest
 	Index *int
 }
 
@@ -433,7 +433,7 @@ func (t TestDovecotResultAction) Check(_ context.Context, d *RuntimeData) (bool,
 		}
 		action := d.AppliedActions[idx]
 
-		ok, err := t.matcherTest.tryMatch(d, action.testActionName())
+		ok, err := t.MatcherTest.tryMatch(d, action.testActionName())
 		if err != nil {
 			return false, err
 		}
@@ -443,7 +443,7 @@ func (t TestDovecotResultAction) Check(_ context.Context, d *RuntimeData) (bool,
 	}
 
 	for _, action := range d.AppliedActions {
-		ok, err := t.matcherTest.tryMatch(d, action.testActionName())
+		ok, err := t.MatcherTest.tryMatch(d, action.testActionName())
 		if err != nil {
 			return false, err
 		}
@@ -473,6 +473,8 @@ func (t TestDovecotResultExecute) Check(_ context.Context, d *RuntimeData) (bool
 func init() {
 	gob.Register(CmdDovecotTest{})
 	gob.Register(CmdDovecotTestFail{})
+	gob.Register(CmdDovecotTestSet{})
+	gob.Register(CmdNoop{})
 	gob.Register(CmdDovecotConfigSet{})
 	gob.Register(CmdDovecotBinarySave{})
 	gob.Register(CmdDovecotBinaryLoad{})

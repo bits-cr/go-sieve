@@ -8,7 +8,7 @@ import (
 
 func loadAddressTest(s *Script, test parser.Test) (Test, error) {
 	loaded := AddressTest{
-		matcherTest: newMatcherTest(),
+		MatcherTest: newMatcherTest(),
 		AddressPart: All,
 	}
 	var key []string
@@ -97,7 +97,7 @@ func loadEnvelopeTest(s *Script, test parser.Test) (Test, error) {
 	}
 
 	loaded := EnvelopeTest{
-		matcherTest: newMatcherTest(),
+		MatcherTest: newMatcherTest(),
 		AddressPart: All,
 	}
 	var key []string
@@ -186,7 +186,7 @@ func loadTrueTest(s *Script, test parser.Test) (Test, error) {
 }
 
 func loadHeaderTest(s *Script, test parser.Test) (Test, error) {
-	loaded := HeaderTest{matcherTest: newMatcherTest()}
+	loaded := HeaderTest{MatcherTest: newMatcherTest()}
 	var key []string
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Pos: []SpecPosArg{
@@ -251,7 +251,7 @@ func loadSizeTest(s *Script, test parser.Test) (Test, error) {
 }
 
 func loadHasFlagTest(s *Script, test parser.Test) (Test, error) {
-	loaded := HasFlagTest{matcherTest: newMatcherTest()}
+	loaded := HasFlagTest{MatcherTest: newMatcherTest()}
 	var key, arg1, arg2 []string
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Pos: []SpecPosArg{
@@ -294,7 +294,7 @@ func loadBodyTest(s *Script, test parser.Test) (Test, error) {
 	}
 
 	loaded := BodyTest{
-		matcherTest: newMatcherTest(),
+		MatcherTest: newMatcherTest(),
 		Transform:   BodyTransformText, // default transform
 	}
 
@@ -361,7 +361,7 @@ func loadEnvironmentTest(s *Script, test parser.Test) (Test, error) {
 		return nil, fmt.Errorf("missing require 'environment'")
 	}
 
-	loaded := EnvironmentTest{matcherTest: newMatcherTest()}
+	loaded := EnvironmentTest{MatcherTest: newMatcherTest()}
 	var key []string
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Pos: []SpecPosArg{

@@ -79,7 +79,7 @@ func TestBodyTextStripHTMLDoesNotLeakAcrossParts(t *testing.T) {
 	}
 
 	test := BodyTest{
-		matcherTest: matcherTest{
+		MatcherTest: MatcherTest{
 			Comparator: ComparatorOctet,
 			Match:      MatchContains,
 			Key:        []string{"<b>"},
@@ -104,7 +104,7 @@ func TestTryMatchBodyPartClosesReadersOnNonMatch(t *testing.T) {
 		closeCount:  &closeCount,
 	}
 
-	matcher := matcherTest{
+	matcher := MatcherTest{
 		Comparator: ComparatorOctet,
 		Match:      MatchIs,
 		Key:        []string{"nomatch", "hello"},
@@ -123,7 +123,7 @@ func TestTryMatchBodyPartClosesReadersOnNonMatch(t *testing.T) {
 }
 
 func TestTryMatchBodyPartASCIINumericIs(t *testing.T) {
-	matcher := matcherTest{
+	matcher := MatcherTest{
 		Comparator: ComparatorASCIINumeric,
 		Match:      MatchIs,
 		Key:        []string{"2"},

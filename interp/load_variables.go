@@ -2,7 +2,6 @@ package interp
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/foxcpp/go-sieve/parser"
@@ -14,98 +13,26 @@ func loadSet(script *Script, pcmd parser.Cmd) (Cmd, error) {
 	}
 	cmd := CmdSet{}
 
-	// by precedence
-	var modifiers = map[int]func(string) string{}
+	// Modifier name by precedence (RFC 5229, section 4.1).
+	var modifiers = map[int]string{}
 	var conflictingMods bool
+	setModifier := func(prec int, name string) func() {
+		return func() {
+			if modifiers[prec] != "" {
+				conflictingMods = true
+			}
+			modifiers[prec] = name
+		}
+	}
 
 	err := LoadSpec(script, &Spec{
 		Tags: map[string]SpecTag{
-			"length": {
-				MatchBool: func() {
-					if modifiers[10] != nil {
-						conflictingMods = true
-					}
-					modifiers[10] = func(s string) string {
-						// RFC mentions `characters' and not octets
-						return strconv.Itoa(len([]rune(s)))
-					}
-				},
-			},
-			"quotewildcard": {
-				MatchBool: func() {
-					if modifiers[20] != nil {
-						conflictingMods = true
-					}
-					modifiers[20] = func(s string) string {
-						escaped := strings.Builder{}
-						escaped.Grow(len(s))
-						for _, chr := range s {
-							switch chr {
-							case '\\', '*', '?':
-								escaped.WriteByte('\\')
-								escaped.WriteRune(chr)
-							default:
-								escaped.WriteRune(chr)
-							}
-						}
-						return escaped.String()
-					}
-				},
-			},
-			"upper": {
-				MatchBool: func() {
-					if modifiers[40] != nil {
-						conflictingMods = true
-					}
-					modifiers[40] = func(s string) string {
-						return strings.ToUpper(s)
-					}
-				},
-			},
-			"lower": {
-				MatchBool: func() {
-					if modifiers[40] != nil {
-						conflictingMods = true
-					}
-					modifiers[40] = func(s string) string {
-						return strings.ToLower(s)
-					}
-				},
-			},
-			"upperfirst": {
-				MatchBool: func() {
-					if modifiers[30] != nil {
-						conflictingMods = true
-					}
-					modifiers[30] = func(s string) string {
-						if len(s) == 0 {
-							return s
-						}
-						first := s[0]
-						if first >= 'a' && first <= 'z' {
-							first -= 'a' - 'A'
-						}
-						return string(first) + s[1:]
-					}
-				},
-			},
-			"lowerfirst": {
-				MatchBool: func() {
-					if modifiers[30] != nil {
-						conflictingMods = true
-					}
-					modifiers[30] = func(s string) string {
-						if len(s) == 0 {
-							return s
-						}
-						first := s[0]
-						if first >= 'A' && first <= 'Z' {
-							first += 'a' - 'A'
-						}
-						return string(first) + s[1:]
-					}
-				},
-			},
+			"length":        {MatchBool: setModifier(10, "length")},
+			"quotewildcard": {MatchBool: setModifier(20, "quotewildcard")},
+			"upper":         {MatchBool: setModifier(40, "upper")},
+			"lower":         {MatchBool: setModifier(40, "lower")},
+			"upperfirst":    {MatchBool: setModifier(30, "upperfirst")},
+			"lowerfirst":    {MatchBool: setModifier(30, "lowerfirst")},
 		},
 		Pos: []SpecPosArg{
 			{
@@ -134,40 +61,11 @@ func loadSet(script *Script, pcmd parser.Cmd) (Cmd, error) {
 		return nil, parser.ErrorAt(pcmd.Position, "cannot set this variable")
 	}
 
-	cmd.ModifyValue = func(s string) string {
-		lastPrec := 9999
-		for _, prec := range [4]int{40, 30, 20, 10} {
-			fun := modifiers[prec]
-			if fun != nil {
-				s = fun(s)
-				lastPrec = prec
-			}
+	// Applied from the highest precedence to the lowest.
+	for _, prec := range [4]int{40, 30, 20, 10} {
+		if name := modifiers[prec]; name != "" {
+			cmd.Modifiers = append(cmd.Modifiers, name)
 		}
-
-		// If last run modifier was quotewildcard - check
-		// whether created value would remain valid
-		// if truncated to MaxVariableLen. If so, truncate
-		// here and remove dangling backslashes (if any).
-		if lastPrec == 20 {
-			if len(s) > script.opts.MaxVariableLen {
-				until := script.opts.MaxVariableLen
-
-				// (Copy-pasted from RuntimeData.SetVar)
-				// If this truncated an otherwise valid Unicode character,
-				// remove the character altogether.
-				for until > 0 && s[until] >= 128 && s[until] < 192 /* second or further octet of UTF-8 encoding */ {
-					until--
-				}
-
-				if s[until-1] == '\\' {
-					until--
-				}
-
-				s = s[:until]
-			}
-		}
-
-		return s
 	}
 
 	return cmd, err
@@ -178,7 +76,7 @@ func loadStringTest(s *Script, test parser.Test) (Test, error) {
 		return nil, fmt.Errorf("missing require 'variables'")
 	}
 
-	loaded := TestString{matcherTest: newMatcherTest()}
+	loaded := TestString{MatcherTest: newMatcherTest()}
 	var key []string
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Pos: []SpecPosArg{
