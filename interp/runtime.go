@@ -24,6 +24,20 @@ type Env interface {
 	GetEnvironment(name string) (value string, ok bool)
 }
 
+// MailboxInfo gives the mailbox extension's mailboxexists test (RFC 5490)
+// and the special-use extension's specialuse_exists test (RFC 8579) access to
+// the user's mailboxes. If RuntimeData.MailboxInfo is nil, both tests are
+// false.
+type MailboxInfo interface {
+	// MailboxExists reports whether the named mailbox exists and the
+	// message could be delivered into it.
+	MailboxExists(ctx context.Context, name string) (bool, error)
+	// SpecialUseExists reports whether a mailbox has the special-use
+	// attribute flag (for example "\\Junk"). If mailbox is "", any mailbox
+	// counts.
+	SpecialUseExists(ctx context.Context, mailbox, flag string) (bool, error)
+}
+
 type Envelope interface {
 	EnvelopeFrom() string
 	EnvelopeTo() string
@@ -176,6 +190,9 @@ type RuntimeData struct {
 	Msg      Message
 	Script   *Script
 	Env      Env
+	// MailboxInfo answers mailboxexists and specialuse_exists; nil makes
+	// them false.
+	MailboxInfo MailboxInfo
 	// For files accessible vis "include", "test_script_compile", etc.
 	Namespace fs.FS
 
@@ -223,6 +240,7 @@ func (d *RuntimeData) Copy() *RuntimeData {
 		Msg:            d.Msg,
 		Script:         d.Script,
 		Env:            d.Env,
+		MailboxInfo:    d.MailboxInfo,
 		Namespace:      d.Namespace,
 		OnAction:       d.OnAction,
 		AppliedActions: make([]AppliedAction, len(d.AppliedActions)),

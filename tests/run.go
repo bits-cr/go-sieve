@@ -26,6 +26,9 @@ func ExecuteTestRuntime(env interp.ExecuteTestEnvironment) func(d *interp.Runtim
 			d.Test = &interp.TestRuntime{}
 		}
 		d.Test.Execute = env
+		if info, ok := env.(interp.MailboxInfo); ok {
+			d.MailboxInfo = info
+		}
 	}
 }
 

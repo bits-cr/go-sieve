@@ -23,6 +23,10 @@ Sieve email filtering language ([RFC 5228]) interpreter implementation in Go.
 - body ([RFC 5173])
 - regex ([draft-ietf-sieve-regex-01]): POSIX extended regular expressions, leftmost-longest
 - date, index ([RFC 5260]): the local time zone and the current time come from `RuntimeData.Location` and `RuntimeData.Now`
+- mailbox ([RFC 5490]): `fileinto :create` and `mailboxexists`; the metadata tests are not implemented
+- special-use ([RFC 8579])
+
+`mailboxexists` and `specialuse_exists` ask the host through `RuntimeData.MailboxInfo`; without it they are false.
 
 ## Example
 
@@ -45,3 +49,5 @@ See ./cmd/sieve-run.
 [RFC 5173]: https://datatracker.ietf.org/doc/html/rfc5173
 [draft-ietf-sieve-regex-01]: https://datatracker.ietf.org/doc/html/draft-ietf-sieve-regex-01
 [RFC 5260]: https://datatracker.ietf.org/doc/html/rfc5260
+[RFC 5490]: https://datatracker.ietf.org/doc/html/rfc5490
+[RFC 8579]: https://datatracker.ietf.org/doc/html/rfc8579

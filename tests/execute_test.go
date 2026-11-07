@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -20,6 +21,18 @@ func (s *simpleExecuteRuntime) CreateMailbox(name string) error {
 	return nil
 }
 
+// MailboxExists implements interp.MailboxInfo.
+func (s *simpleExecuteRuntime) MailboxExists(_ context.Context, name string) (bool, error) {
+	_, ok := s.mailboxes[name]
+	return ok, nil
+}
+
+// SpecialUseExists implements interp.MailboxInfo. This store has no
+// special-use attributes.
+func (s *simpleExecuteRuntime) SpecialUseExists(_ context.Context, _, _ string) (bool, error) {
+	return false, nil
+}
+
 func (s *simpleExecuteRuntime) GetDefaultMailbox() string {
 	return "INBOX"
 }
@@ -28,6 +41,11 @@ func (s *simpleExecuteRuntime) ExecuteActions(d *interp.RuntimeData, actions []i
 	for _, act := range actions {
 		switch act := act.(type) {
 		case interp.ActionFileInto:
+			// No mailbox has a special-use attribute here, so :specialuse
+			// falls back to the named mailbox (RFC 8579, section 5).
+			if s.mailboxes == nil {
+				s.mailboxes = make(map[string][]*interp.ExecuteTestMessage)
+			}
 			s.mailboxes[act.Mailbox] = append(s.mailboxes[act.Mailbox], &interp.ExecuteTestMessage{
 				Envelope: d.Envelope,
 				Message:  d.Msg,

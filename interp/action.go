@@ -14,9 +14,11 @@ func (c CmdStop) Execute(_ context.Context, _ *RuntimeData) error {
 }
 
 type CmdFileInto struct {
-	Mailbox string
-	Flags   Flags
-	Copy    bool
+	Mailbox    string
+	Flags      Flags
+	Copy       bool
+	Create     bool
+	SpecialUse string
 }
 
 func (c CmdFileInto) Execute(ctx context.Context, d *RuntimeData) error {
@@ -37,10 +39,20 @@ func (c CmdFileInto) Execute(ctx context.Context, d *RuntimeData) error {
 	}
 	flags = canonicalFlags(expandVarsList(d, flags), nil, d.FlagAliases)
 
+	specialUse := ""
+	if c.SpecialUse != "" {
+		specialUse = expandVars(d, c.SpecialUse)
+		if !validSpecialUseFlag(specialUse) {
+			return fmt.Errorf("fileinto: invalid special-use flag: %q", specialUse)
+		}
+	}
+
 	if err := d.OnAction(ctx, ActionFileInto{
-		Mailbox: mailbox,
-		Flags:   flags,
-		Copy:    c.Copy,
+		Mailbox:    mailbox,
+		Flags:      flags,
+		Copy:       c.Copy,
+		Create:     c.Create,
+		SpecialUse: specialUse,
 	}, d); err != nil {
 		return err
 	}
