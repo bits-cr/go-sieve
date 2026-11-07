@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/mail"
 	"net/textproto"
 	"strconv"
 	"strings"
@@ -100,7 +101,20 @@ func (c CmdDovecotConfigSet) Execute(_ context.Context, d *RuntimeData) error {
 			d.Script.opts.SubAddressSep = c.Value
 		}
 	default:
-		return fmt.Errorf("unknown test_config_set key: %v", c.Key)
+		if c.Key != "sieve_user_email" && !strings.HasPrefix(c.Key, "sieve_vacation_") {
+			return fmt.Errorf("unknown test_config_set key: %v", c.Key)
+		}
+		if d.Test == nil {
+			return fmt.Errorf("test runtime is not configured")
+		}
+		if c.Unset {
+			delete(d.Test.Config, c.Key)
+			return nil
+		}
+		if d.Test.Config == nil {
+			d.Test.Config = map[string]string{}
+		}
+		d.Test.Config[c.Key] = c.Value
 	}
 	return nil
 }
@@ -129,6 +143,33 @@ func (c CmdDovecotTestSet) Execute(_ context.Context, d *RuntimeData) error {
 			Header:     msgHdr,
 			RawMessage: []byte(c.VariableValue),
 		}
+
+		// Like Pigeonhole's testsuite, derive the envelope from the message:
+		// the recipient from Envelope-To or To, the sender from Return-Path,
+		// Sender or From, with fixed defaults. The original recipient starts
+		// as the recipient.
+		recipient := firstAddress(msgHdr, "Envelope-To", "To")
+		if recipient == "" {
+			recipient = "recipient@example.com"
+		}
+		sender := firstAddress(msgHdr, "Return-Path", "Sender", "From")
+		if sender == "" {
+			sender = "sender@example.com"
+		}
+		d.Envelope = EnvelopeStatic{
+			From: sender,
+			To:   recipient,
+			Auth: d.Envelope.AuthUsername(),
+		}
+		d.Variables["envelope.orig_to"] = recipient
+
+		// The new message is what test_result_reset returns to, not one
+		// saved by an earlier test_message.
+		if d.Test != nil {
+			d.Test.OriginalMsg = nil
+			d.Test.OriginalEnvelope = nil
+			d.Test.OriginalFlags = nil
+		}
 	case "envelope.from":
 		value = strings.TrimSuffix(strings.TrimPrefix(value, "<"), ">")
 
@@ -156,6 +197,19 @@ func (c CmdDovecotTestSet) Execute(_ context.Context, d *RuntimeData) error {
 	}
 
 	return nil
+}
+
+// firstAddress returns the address of the first of the named header fields
+// that holds a parseable address.
+func firstAddress(hdr textproto.MIMEHeader, names ...string) string {
+	for _, name := range names {
+		for _, value := range hdr.Values(name) {
+			if addr, err := mail.ParseAddress(value); err == nil {
+				return addr.Address
+			}
+		}
+	}
+	return ""
 }
 
 // separateBody inserts the empty line that separates header and body if a
@@ -281,16 +335,30 @@ func (c TestDovecotMessage) Check(_ context.Context, d *RuntimeData) (bool, erro
 		return false, fmt.Errorf("no test execution environment is configured")
 	}
 
+	var (
+		ok  bool
+		err error
+	)
 	if c.SMTP {
-		return d.Test.Execute.HasSMTPMessage(c.Index)
+		ok, err = d.Test.Execute.HasSMTPMessage(c.Index)
+	} else {
+		folder := c.Folder
+		if folder == "" {
+			folder = d.Test.Execute.GetDefaultMailbox()
+		}
+		ok, err = d.Test.Execute.HasMailboxMessage(folder, c.Index)
+	}
+	if err != nil || !ok {
+		return false, err
 	}
 
-	folder := c.Folder
-	if folder == "" {
-		folder = d.Test.Execute.GetDefaultMailbox()
+	// As the test_message command does, make the message the active one,
+	// so that the tests that follow examine it.
+	cmd := CmdDovecotMessage{SMTP: c.SMTP, Folder: c.Folder, Index: c.Index}
+	if err := cmd.Execute(context.Background(), d); err != nil {
+		return false, err
 	}
-
-	return d.Test.Execute.HasMailboxMessage(folder, c.Index)
+	return true, nil
 }
 
 type CmdDovecotResultReset struct{}

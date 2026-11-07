@@ -241,6 +241,9 @@ type CmdReject struct {
 }
 
 func (c CmdReject) Execute(ctx context.Context, d *RuntimeData) error {
+	if err := rejectConflict(d); err != nil {
+		return err
+	}
 	if err := d.OnAction(ctx, ActionReject{Reason: expandVars(d, c.Reason)}, d); err != nil {
 		return err
 	}
@@ -253,10 +256,24 @@ type CmdEReject struct {
 }
 
 func (c CmdEReject) Execute(ctx context.Context, d *RuntimeData) error {
+	if err := rejectConflict(d); err != nil {
+		return err
+	}
 	if err := d.OnAction(ctx, ActionEReject{Reason: expandVars(d, c.Reason)}, d); err != nil {
 		return err
 	}
 	d.ImplicitKeep = false
+	return nil
+}
+
+// rejectConflict fails if vacation already ran: the two are incompatible
+// (RFC 5230, section 4.7).
+func rejectConflict(d *RuntimeData) error {
+	for _, a := range d.AppliedActions {
+		if _, ok := a.(ActionVacation); ok {
+			return fmt.Errorf("reject: cannot be used together with vacation")
+		}
+	}
 	return nil
 }
 

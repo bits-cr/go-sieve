@@ -25,8 +25,13 @@ Sieve email filtering language ([RFC 5228]) interpreter implementation in Go.
 - date, index ([RFC 5260]): the local time zone and the current time come from `RuntimeData.Location` and `RuntimeData.Now`
 - mailbox ([RFC 5490]): `fileinto :create` and `mailboxexists`; the metadata tests are not implemented
 - special-use ([RFC 8579])
+- vacation ([RFC 5230]), vacation-seconds ([RFC 6131])
 
 `mailboxexists` and `specialuse_exists` ask the host through `RuntimeData.MailboxInfo`; without it they are false.
+
+The vacation action leaves sending to the host: it tracks responses per `ActionVacation.Handle` and
+sender for `Period`, and can build the response with `interp.BuildVacationResponse`, which applies the
+RFC 5230 rules on whom not to reply to.
 
 ## Example
 
@@ -51,3 +56,5 @@ See ./cmd/sieve-run.
 [RFC 5260]: https://datatracker.ietf.org/doc/html/rfc5260
 [RFC 5490]: https://datatracker.ietf.org/doc/html/rfc5490
 [RFC 8579]: https://datatracker.ietf.org/doc/html/rfc8579
+[RFC 5230]: https://datatracker.ietf.org/doc/html/rfc5230
+[RFC 6131]: https://datatracker.ietf.org/doc/html/rfc6131
