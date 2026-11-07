@@ -1,8 +1,12 @@
 package tests
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"net/textproto"
+	"strings"
 	"testing"
 
 	"github.com/foxcpp/go-sieve/interp"
@@ -65,6 +69,10 @@ func (s *simpleExecuteRuntime) ExecuteActions(d *interp.RuntimeData, actions []i
 				Envelope: d.Envelope,
 				Message:  d.Msg,
 			})
+		case interp.ActionVacation:
+			if err := s.sendVacation(d, act); err != nil {
+				return err
+			}
 		case interp.ActionReject, interp.ActionEReject:
 			// Reject/ereject: no message delivery.
 			// TODO: Build MDN and add SMTP to enable SMTP reject tests.
@@ -74,6 +82,41 @@ func (s *simpleExecuteRuntime) ExecuteActions(d *interp.RuntimeData, actions []i
 		}
 	}
 
+	return nil
+}
+
+// sendVacation builds the vacation response with the library's builder and
+// "sends" it, mapping the Pigeonhole settings the test scripts set.
+func (s *simpleExecuteRuntime) sendVacation(d *interp.RuntimeData, act interp.ActionVacation) error {
+	config := map[string]string{}
+	if d.Test != nil && d.Test.Config != nil {
+		config = d.Test.Config
+	}
+	opts := interp.VacationOptions{
+		DontCheckRecipient: config["sieve_vacation_dont_check_recipient"] == "yes",
+		SendFromRecipient:  config["sieve_vacation_send_from_recipient"] == "yes",
+		DefaultSubject:     config["sieve_vacation_default_subject"],
+	}
+	if email := config["sieve_user_email"]; email != "" {
+		opts.UserAddresses = []string{email}
+	}
+	if config["sieve_vacation_use_original_recipient"] == "yes" {
+		opts.OriginalRecipient = strings.Trim(d.Variables["envelope.orig_to"], "<>")
+	}
+
+	resp, _, err := interp.BuildVacationResponse(d, act, opts)
+	if err != nil || resp == nil {
+		return err
+	}
+
+	hdr, err := textproto.NewReader(bufio.NewReader(bytes.NewReader(resp.Message))).ReadMIMEHeader()
+	if err != nil {
+		return fmt.Errorf("vacation response: %v", err)
+	}
+	s.smtp = append(s.smtp, &interp.ExecuteTestMessage{
+		Envelope: interp.EnvelopeStatic{From: resp.EnvelopeFrom, To: resp.Recipient},
+		Message:  interp.MessageStatic{Size: len(resp.Message), Header: hdr, RawMessage: resp.Message},
+	})
 	return nil
 }
 
