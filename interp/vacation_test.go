@@ -164,6 +164,36 @@ func TestVacationResponseMIME(t *testing.T) {
 	}
 }
 
+func TestVacationResponseHeaderSafety(t *testing.T) {
+	now := time.Date(2026, time.November, 7, 12, 0, 0, 0, time.UTC)
+	d := vacationData(t, "coyote@desert.example.org", "roadrunner@acme.example.com", vacationMsg)
+	d.Now = func() time.Time { return now }
+
+	resp, _, err := BuildVacationResponse(d, ActionVacation{
+		Reason:  "away",
+		Subject: "Away\r\nBcc: victim@example.com\nX-Injected: yes",
+		From:    "not an address\r\nBcc: victim@example.com",
+	}, VacationOptions{})
+	if err != nil || resp == nil {
+		t.Fatal(err)
+	}
+	hdr, _ := parseResponse(t, resp.Message)
+	if hdr.Get("Bcc") != "" || hdr.Get("X-Injected") != "" {
+		t.Errorf("a script value added header fields: %v", hdr)
+	}
+	if got := hdr.Get("Subject"); got != "Away Bcc: victim@example.com X-Injected: yes" {
+		t.Errorf("subject: %q", got)
+	}
+	// An invalid :from is ignored: the response comes from the matched address.
+	if got := hdr.Get("From"); got != "roadrunner@acme.example.com" {
+		t.Errorf("from: %q", got)
+	}
+	// Without VacationOptions.Now, Date is the execution's current time.
+	if got := hdr.Get("Date"); got != "Sat, 07 Nov 2026 12:00:00 +0000" {
+		t.Errorf("date: %q", got)
+	}
+}
+
 func parseResponse(t *testing.T, msg []byte) (textproto.MIMEHeader, string) {
 	t.Helper()
 	r := textproto.NewReader(bufio.NewReader(bytes.NewReader(msg)))

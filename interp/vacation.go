@@ -300,7 +300,19 @@ func BuildVacationResponse(d *RuntimeData, a ActionVacation, opts VacationOption
 		recipientAddr = strings.TrimSpace(d.Envelope.EnvelopeTo())
 	}
 
-	from := a.From
+	// :from after variable expansion. An invalid value is ignored rather
+	// than failing the action (RFC 5230, section 4.3); a valid one is written
+	// from its parsed form, so no raw text reaches the header.
+	from := ""
+	if a.From != "" {
+		if addrs, err := mail.ParseAddressList(a.From); err == nil && len(addrs) != 0 {
+			parts := make([]string, len(addrs))
+			for i, addr := range addrs {
+				parts[i] = addr.String()
+			}
+			from = strings.Join(parts, ", ")
+		}
+	}
 	if from == "" {
 		from = recipientAddr
 		if from == "" {
@@ -308,13 +320,13 @@ func BuildVacationResponse(d *RuntimeData, a ActionVacation, opts VacationOption
 		}
 	}
 
-	subject := a.Subject
+	subject := singleLine(a.Subject)
 	if subject == "" {
 		original, err := firstHeader(d.Msg, "Subject")
 		if err != nil {
 			return nil, "", err
 		}
-		original = decodeHeader(original)
+		original = singleLine(decodeHeader(original))
 		switch {
 		case strings.TrimSpace(original) != "":
 			subject = "Auto: " + original
@@ -332,7 +344,7 @@ func BuildVacationResponse(d *RuntimeData, a ActionVacation, opts VacationOption
 
 	now := opts.Now
 	if now.IsZero() {
-		now = time.Now()
+		now = d.currentTime()
 	}
 	messageID := strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(opts.MessageID), "<"), ">")
 	if messageID == "" {
@@ -591,6 +603,13 @@ func generateMessageID(from string) (string, error) {
 		return "", fmt.Errorf("vacation: message-id: %w", err)
 	}
 	return hex.EncodeToString(buf[:]) + ".vacation@" + domain, nil
+}
+
+// singleLine replaces line breaks with spaces, so that text from a script
+// (a text: string can span lines) or a decoded header can't add header
+// fields.
+func singleLine(s string) string {
+	return strings.TrimSpace(strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(s))
 }
 
 func crlf(s string) string {
