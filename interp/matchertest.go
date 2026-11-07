@@ -68,6 +68,14 @@ func (t *MatcherTest) addSpecTags(s *Spec) *Spec {
 			t.matchCnt++
 		},
 	}
+	// regex extension. Accepted here so every test with a match-type takes it;
+	// setKey rejects it unless "regex" is required.
+	s.Tags["regex"] = SpecTag{
+		MatchBool: func() {
+			t.Match = MatchRegex
+			t.matchCnt++
+		},
+	}
 	s.Tags["value"] = SpecTag{
 		NeedsValue:  true,
 		MinStrCount: 1,
@@ -131,6 +139,27 @@ func (t *MatcherTest) setKey(s *Script, k []string) error {
 	case "":
 	default:
 		return fmt.Errorf("unsupported comparator: %v", t.Comparator)
+	}
+
+	if t.Match == MatchRegex {
+		if !s.RequiresExtension("regex") {
+			return fmt.Errorf("missing require 'regex'")
+		}
+		if t.Comparator == ComparatorASCIINumeric {
+			return fmt.Errorf("comparator %v cannot be used with :regex", t.Comparator)
+		}
+		t.keyCompiled = make([]CompiledMatcher, len(t.Key))
+		for i := range t.Key {
+			if len(usedVars(s, t.Key[i])) > 0 {
+				continue
+			}
+
+			var err error
+			t.keyCompiled[i], err = compileMatcherPOSIX(t.Key[i], octet, caseFold)
+			if err != nil {
+				return fmt.Errorf("malformed regular expression (%v): %v", t.Key[i], err)
+			}
+		}
 	}
 
 	if t.Match == MatchMatches {
@@ -237,7 +266,7 @@ func (t *MatcherTest) tryMatch(d *RuntimeData, source string) (bool, error) {
 			return false, err
 		}
 		if ok {
-			if t.Match == MatchMatches {
+			if t.Match == MatchMatches || t.Match == MatchRegex {
 				d.MatchVariables = matches
 			}
 			return true, nil

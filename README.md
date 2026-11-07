@@ -21,6 +21,7 @@ Sieve email filtering language ([RFC 5228]) interpreter implementation in Go.
 - subaddress ([RFC 5233])
 - environment ([RFC 5183])
 - body ([RFC 5173])
+- regex ([draft-ietf-sieve-regex-01]): POSIX extended regular expressions, leftmost-longest
 
 ## Example
 
@@ -41,3 +42,4 @@ See ./cmd/sieve-run.
 [RFC 5233]: https://datatracker.ietf.org/doc/html/rfc5233
 [RFC 5183]: https://datatracker.ietf.org/doc/html/rfc5183
 [RFC 5173]: https://datatracker.ietf.org/doc/html/rfc5173
+[draft-ietf-sieve-regex-01]: https://datatracker.ietf.org/doc/html/draft-ietf-sieve-regex-01

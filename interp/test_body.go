@@ -39,6 +39,18 @@ func (r asciiLowerByteReader) Read(p []byte) (int, error) {
 }
 
 func testReader(comparator Comparator, match Match, valueReader io.Reader, key string) (bool, error) {
+	if match == MatchRegex {
+		if comparator == ComparatorASCIINumeric {
+			return false, ErrComparatorMatchUnsupported
+		}
+		matcher, err := compileMatcherPOSIX(key, comparator.IsOctet(), comparator.IsCaseMap())
+		if err != nil {
+			// Invalid after variable expansion: the test fails (see matchRegex).
+			return false, nil
+		}
+		return matcher.MatchReader(valueReader)
+	}
+
 	if comparator == ComparatorASCIINumeric {
 		switch match {
 		case MatchContains, MatchMatches:
