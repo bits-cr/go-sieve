@@ -218,7 +218,7 @@ func loadDovecotError(s *Script, test parser.Test) (Test, error) {
 		return nil, fmt.Errorf("testing environment is not enabled")
 	}
 
-	loaded := TestDovecotTestError{matcherTest: newMatcherTest()}
+	loaded := TestDovecotTestError{MatcherTest: newMatcherTest()}
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Tags: map[string]SpecTag{
 			"index": {
@@ -244,7 +244,7 @@ func loadDovecotResultAction(s *Script, test parser.Test) (Test, error) {
 		return nil, fmt.Errorf("testing environment is not enabled")
 	}
 
-	loaded := TestDovecotResultAction{matcherTest: newMatcherTest()}
+	loaded := TestDovecotResultAction{MatcherTest: newMatcherTest()}
 	err := LoadSpec(s, loaded.addSpecTags(&Spec{
 		Tags: map[string]SpecTag{
 			"index": {

@@ -14,7 +14,7 @@ type Test interface {
 }
 
 type AddressTest struct {
-	matcherTest
+	MatcherTest
 
 	AddressPart AddressPart
 	Header      []string
@@ -85,7 +85,7 @@ func (a AddressTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
 					continue
 				}
 
-				ok, err := testAddress(d, a.matcherTest, a.AddressPart, addr.Address)
+				ok, err := testAddress(d, a.MatcherTest, a.AddressPart, addr.Address)
 				if err != nil {
 					return false, err
 				}
@@ -138,7 +138,7 @@ func (a AnyOfTest) Check(ctx context.Context, d *RuntimeData) (bool, error) {
 }
 
 type EnvelopeTest struct {
-	matcherTest
+	MatcherTest
 
 	AddressPart AddressPart
 	Field       []string
@@ -165,7 +165,7 @@ func (e EnvelopeTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
 			continue
 		}
 
-		ok, err := testAddress(d, e.matcherTest, e.AddressPart, value)
+		ok, err := testAddress(d, e.MatcherTest, e.AddressPart, value)
 		if err != nil {
 			return false, err
 		}
@@ -209,7 +209,7 @@ func (t TrueTest) Check(context.Context, *RuntimeData) (bool, error) {
 }
 
 type HeaderTest struct {
-	matcherTest
+	MatcherTest
 
 	Header []string
 }
@@ -228,7 +228,7 @@ func (h HeaderTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
 				continue
 			}
 
-			ok, err := h.matcherTest.tryMatch(d, value)
+			ok, err := h.MatcherTest.tryMatch(d, value)
 			if err != nil {
 				return false, err
 			}
@@ -276,7 +276,7 @@ func (s SizeTest) Check(_ context.Context, d *RuntimeData) (bool, error) {
 // EnvironmentTest implements the Sieve environment test (RFC 5183).
 // It checks the value of a named environment item against a key list.
 type EnvironmentTest struct {
-	matcherTest
+	MatcherTest
 	Name []string // The environment item name(s) to test
 }
 
@@ -309,7 +309,7 @@ func (e EnvironmentTest) Check(_ context.Context, d *RuntimeData) (bool, error) 
 			continue
 		}
 
-		ok, err := e.matcherTest.tryMatch(d, value)
+		ok, err := e.MatcherTest.tryMatch(d, value)
 		if err != nil {
 			return false, err
 		}
@@ -329,7 +329,7 @@ func (e EnvironmentTest) Check(_ context.Context, d *RuntimeData) (bool, error) 
 }
 
 type HasFlagTest struct {
-	matcherTest
+	MatcherTest
 	Variables []string
 }
 
@@ -394,7 +394,7 @@ const (
 
 // BodyTest implements the body test from RFC 5173.
 type BodyTest struct {
-	matcherTest
+	MatcherTest
 
 	// Transform is the body transform: raw, text, or content.
 	Transform BodyTransform
@@ -448,7 +448,7 @@ func (b BodyTest) Check(ctx context.Context, d *RuntimeData) (bool, error) {
 			stripHTML = true
 		}
 
-		ok, err := b.matcherTest.tryMatchBodyPart(ctx, d, part, stripHTML)
+		ok, err := b.MatcherTest.tryMatchBodyPart(ctx, d, part, stripHTML)
 		if err != nil {
 			return false, err
 		}
@@ -469,6 +469,7 @@ func init() {
 	gob.Register(EnvironmentTest{})
 	gob.Register(ExistsTest{})
 	gob.Register(FalseTest{})
+	gob.Register(HasFlagTest{})
 	gob.Register(TrueTest{})
 	gob.Register(HeaderTest{})
 	gob.Register(NotTest{})

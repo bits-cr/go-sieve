@@ -353,8 +353,14 @@ func (t TestDovecotCompile) Check(_ context.Context, d *RuntimeData) (bool, erro
 		return false, nil
 	}
 
+	// The compiled script is a regular Sieve script: it gets the limits of
+	// the running test script, but not the testsuite extension (T).
 	script, err := LoadScript(cmds, &Options{
-		MaxRedirects: d.Script.opts.MaxRedirects,
+		MaxRedirects:       d.Script.opts.MaxRedirects,
+		MaxVariableCount:   d.Script.opts.MaxVariableCount,
+		MaxVariableNameLen: d.Script.opts.MaxVariableNameLen,
+		MaxVariableLen:     d.Script.opts.MaxVariableLen,
+		SubAddressSep:      d.Script.opts.SubAddressSep,
 	})
 	if err != nil {
 		d.Script.opts.T.Log("LoadScript failed:", err)
@@ -394,7 +400,7 @@ func (t TestDovecotRun) Check(ctx context.Context, d *RuntimeData) (bool, error)
 }
 
 type TestDovecotTestError struct {
-	matcherTest
+	MatcherTest
 }
 
 func (t TestDovecotTestError) Check(_ context.Context, _ *RuntimeData) (bool, error) {
@@ -405,7 +411,7 @@ func (t TestDovecotTestError) Check(_ context.Context, _ *RuntimeData) (bool, er
 }
 
 type TestDovecotResultAction struct {
-	matcherTest
+	MatcherTest
 	Index *int
 }
 
@@ -433,7 +439,7 @@ func (t TestDovecotResultAction) Check(_ context.Context, d *RuntimeData) (bool,
 		}
 		action := d.AppliedActions[idx]
 
-		ok, err := t.matcherTest.tryMatch(d, action.testActionName())
+		ok, err := t.MatcherTest.tryMatch(d, action.testActionName())
 		if err != nil {
 			return false, err
 		}
@@ -443,7 +449,7 @@ func (t TestDovecotResultAction) Check(_ context.Context, d *RuntimeData) (bool,
 	}
 
 	for _, action := range d.AppliedActions {
-		ok, err := t.matcherTest.tryMatch(d, action.testActionName())
+		ok, err := t.MatcherTest.tryMatch(d, action.testActionName())
 		if err != nil {
 			return false, err
 		}
@@ -473,6 +479,8 @@ func (t TestDovecotResultExecute) Check(_ context.Context, d *RuntimeData) (bool
 func init() {
 	gob.Register(CmdDovecotTest{})
 	gob.Register(CmdDovecotTestFail{})
+	gob.Register(CmdDovecotTestSet{})
+	gob.Register(CmdNoop{})
 	gob.Register(CmdDovecotConfigSet{})
 	gob.Register(CmdDovecotBinarySave{})
 	gob.Register(CmdDovecotBinaryLoad{})

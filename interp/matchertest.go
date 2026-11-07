@@ -9,11 +9,16 @@ import (
 	"strconv"
 )
 
-// matcherTest contains code shared between tests
+// MatcherTest contains code shared between tests
 // such as 'header', 'address', 'envelope', 'string' -
 // all tests that compare some values from message
 // with pre-defined "key"
-type matcherTest struct {
+//
+// It is exported so that encoding/gob includes its fields when a script is
+// saved (Script.Save): gob skips embedded fields of unexported types, which
+// made restored tests lose their comparator, match type and keys.
+// keyCompiled is not saved; restored tests compile keys when they run.
+type MatcherTest struct {
 	Comparator Comparator
 	Match      Match
 	Relational Relational
@@ -25,14 +30,14 @@ type matcherTest struct {
 	matchCnt int
 }
 
-func newMatcherTest() matcherTest {
-	return matcherTest{
+func newMatcherTest() MatcherTest {
+	return MatcherTest{
 		Comparator: "",
 		Match:      MatchIs,
 	}
 }
 
-func (t *matcherTest) addSpecTags(s *Spec) *Spec {
+func (t *MatcherTest) addSpecTags(s *Spec) *Spec {
 	if s.Tags == nil {
 		s.Tags = make(map[string]SpecTag, 4)
 	}
@@ -88,7 +93,7 @@ func (t *matcherTest) addSpecTags(s *Spec) *Spec {
 	return s
 }
 
-func (t *matcherTest) setKey(s *Script, k []string) error {
+func (t *MatcherTest) setKey(s *Script, k []string) error {
 	t.Key = k
 
 	if t.matchCnt > 1 {
@@ -150,11 +155,11 @@ func (t *matcherTest) setKey(s *Script, k []string) error {
 	return nil
 }
 
-func (t *matcherTest) isCount() bool {
+func (t *MatcherTest) isCount() bool {
 	return t.Match == MatchCount
 }
 
-func (t *matcherTest) countMatches(d *RuntimeData, value uint64) bool {
+func (t *MatcherTest) countMatches(d *RuntimeData, value uint64) bool {
 	if !t.isCount() {
 		panic("countMatches can be called only with MatchCount matcher")
 	}
@@ -173,7 +178,7 @@ func (t *matcherTest) countMatches(d *RuntimeData, value uint64) bool {
 	return false
 }
 
-func (t *matcherTest) tryMatchBodyPart(ctx context.Context, d *RuntimeData, part BodyPart, stripHTML bool) (bool, error) {
+func (t *MatcherTest) tryMatchBodyPart(ctx context.Context, d *RuntimeData, part BodyPart, stripHTML bool) (bool, error) {
 	for i, key := range t.Key {
 		partReader, err := part.Open(ctx)
 		if err != nil {
@@ -215,7 +220,7 @@ func (t *matcherTest) tryMatchBodyPart(ctx context.Context, d *RuntimeData, part
 	return false, nil
 }
 
-func (t *matcherTest) tryMatch(d *RuntimeData, source string) (bool, error) {
+func (t *MatcherTest) tryMatch(d *RuntimeData, source string) (bool, error) {
 	for i, key := range t.Key {
 		var (
 			ok      bool
