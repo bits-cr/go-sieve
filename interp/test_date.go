@@ -40,8 +40,14 @@ func validDatePart(p string) bool {
 	return false
 }
 
-// mjdEpoch is the start of the Modified Julian Day count, 1858-11-17.
-var mjdEpoch = time.Date(1858, time.November, 17, 0, 0, 0, 0, time.UTC)
+// floorDiv divides rounding towards negative infinity.
+func floorDiv(a, b int64) int64 {
+	q := a / b
+	if (a%b != 0) && ((a < 0) != (b < 0)) {
+		q--
+	}
+	return q
+}
 
 // formatDatePart returns the value of a date-part for t, already shifted to the
 // time zone the test asks for. The second result is false for an unknown part.
@@ -57,9 +63,10 @@ func formatDatePart(t time.Time, part string) (string, bool) {
 		return fmt.Sprintf("%04d-%02d-%02d", t.Year(), int(t.Month()), t.Day()), true
 	case DatePartJulian:
 		// Days since 1858-11-17 of the calendar date in the selected zone.
+		// Counted in Unix days, not time.Duration, which saturates after
+		// about 292 years. 40587 is the MJD of 1970-01-01.
 		day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-		// Both are midnight UTC, so the difference is a whole number of days.
-		mjd := int64(day.Sub(mjdEpoch) / (24 * time.Hour))
+		mjd := floorDiv(day.Unix(), 86400) + 40587
 		return strconv.FormatInt(mjd, 10), true
 	case DatePartHour:
 		return fmt.Sprintf("%02d", t.Hour()), true
