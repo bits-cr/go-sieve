@@ -115,7 +115,7 @@ func (c CmdDovecotTestSet) Execute(_ context.Context, d *RuntimeData) error {
 
 	switch c.VariableName {
 	case "message":
-		r := textproto.NewReader(bufio.NewReader(strings.NewReader(c.VariableValue)))
+		r := textproto.NewReader(bufio.NewReader(strings.NewReader(separateBody(c.VariableValue))))
 		msgHdr, err := r.ReadMIMEHeader()
 		if err != nil && !errors.Is(err, io.EOF) {
 			return fmt.Errorf("failed to parse test message: %v", err)
@@ -156,6 +156,26 @@ func (c CmdDovecotTestSet) Execute(_ context.Context, d *RuntimeData) error {
 	}
 
 	return nil
+}
+
+// separateBody inserts the empty line that separates header and body if a
+// test message omits it. Like Pigeonhole, the header ends at the first line
+// that is neither a header field nor a folded continuation.
+func separateBody(msg string) string {
+	lines := strings.SplitAfter(msg, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimRight(line, "\r\n")
+		if trimmed == "" {
+			return msg // already separated
+		}
+		if line[0] == ' ' || line[0] == '\t' {
+			continue // folded continuation
+		}
+		if !strings.Contains(trimmed, ":") {
+			return strings.Join(lines[:i], "") + "\r\n" + strings.Join(lines[i:], "")
+		}
+	}
+	return msg
 }
 
 type CmdDovecotBinarySave struct {
