@@ -16,6 +16,9 @@ const (
 	MatchMatches  Match = "matches"
 	MatchValue    Match = "value"
 	MatchCount    Match = "count"
+	// MatchRegex is the :regex match type (draft-ietf-sieve-regex-01):
+	// POSIX extended regular expressions, matched anywhere in the value.
+	MatchRegex Match = "regex"
 )
 
 type Comparator string
@@ -98,6 +101,13 @@ func numericValue(s string) *uint64 {
 }
 
 func testString(comparator Comparator, match Match, rel Relational, value, key string) (bool, []string, error) {
+	if match == MatchRegex {
+		if comparator == ComparatorASCIINumeric {
+			return false, nil, ErrComparatorMatchUnsupported
+		}
+		return matchRegex(key, value, comparator.IsOctet(), comparator.IsCaseMap())
+	}
+
 	switch comparator {
 	case ComparatorOctet:
 		switch match {

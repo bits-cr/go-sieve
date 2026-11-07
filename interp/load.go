@@ -28,6 +28,7 @@ var supportedRequires = map[string]struct{}{
 	"subaddress":   {},
 	"environment":  {},
 	"body":         {},
+	"regex":        {},
 }
 
 var (
